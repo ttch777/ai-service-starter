@@ -1,0 +1,43 @@
+# 模型注册表：改这个文件就能换供应商，不用动代码。
+#
+# providers  base_url 全部走 OpenAI 兼容接口，所以同一个 SDK 能调所有家
+# models     对外暴露的模型名 -> 内部映射（provider + 真实模型名 + 默认参数）
+# fallbacks  主模型失败时的降级顺序
+
+default: deepseek-chat
+
+providers:
+  deepseek:
+    base_url: https://api.deepseek.com/v1
+    api_key_env: DEEPSEEK_API_KEY
+    timeout: 60
+  dashscope:
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    api_key_env: DASHSCOPE_API_KEY
+    timeout: 60
+  zhipu:
+    base_url: https://open.bigmodel.cn/api/paas/v4
+    api_key_env: ZHIPU_API_KEY
+    timeout: 60
+
+models:
+  deepseek-chat:
+    provider: deepseek
+    model: deepseek-chat
+    temperature: 0.3
+    max_tokens: 2048
+  qwen-plus:
+    provider: dashscope
+    model: qwen-plus
+    temperature: 0.3
+    max_tokens: 2048
+  glm-4-flash:
+    provider: zhipu
+    model: glm-4-flash
+    temperature: 0.3
+    max_tokens: 2048
+
+fallbacks:
+  deepseek-chat: [qwen-plus, glm-4-flash]
+  qwen-plus: [deepseek-chat, glm-4-flash]
+  glm-4-flash: [deepseek-chat, qwen-plus]
