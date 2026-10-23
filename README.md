@@ -20,6 +20,22 @@
 
 ---
 
+## 实测性能
+
+| 指标 | P50 | P95 |
+|---|---|---|
+| 首字延迟（TTFT） | 0.77 s | 1.44 s |
+| 端到端延迟 | 2.55 s | 4.50 s |
+
+测试条件：模型 `glm-4-flash`，20 次串行请求（另有 1 次预热），
+本地 `127.0.0.1:8000`，固定 prompt，平均输出 42 tokens。
+复现方式见文末「复现性能数据」。
+
+> 为什么单独列 TTFT：它才是用户感知到的"快"。总耗时 2.5 秒听起来很慢，
+> 但用户在 0.77 秒时就已经看到字在往外蹦了。这两个指标要分开看。
+
+---
+
 ## 架构
 
 ```mermaid
@@ -203,6 +219,8 @@ fallbacks:
 │   └── api/
 │       └── routes.py      # 路由层，只做协议转换
 ├── config/models.yaml     # 供应商与模型配置
+├── data/docs/             # 知识库样例（P2 的 RAG 会用到）
+├── scripts/bench.py       # 延迟压测，产出上面的性能表
 ├── tests/test_api.py      # 契约测试，无需真实 Key
 ├── Dockerfile
 └── docker-compose.yml
@@ -221,19 +239,17 @@ pytest -v
 
 ---
 
-## 自己测一组数据（填进简历用）
+## 复现性能数据
 
 ```bash
-# 首字延迟：连续 20 次，看 P50 / P95
-for i in $(seq 20); do
-  curl -sN -o /dev/null -w "%{time_starttransfer}\n" \
-    -X POST http://127.0.0.1:8000/chat/stream \
-    -H "Content-Type: application/json" \
-    -d '{"messages":[{"role":"user","content":"介绍一下你自己"}]}'
-done
+# 先把服务跑起来，然后：
+python scripts/bench.py --n 20
 ```
 
-把结果按大小排序取 P50 / P95，就是简历上那一行数字的来源。
+脚本会打 1 次预热 + 20 次正式请求，输出 TTFT / 端到端延迟的 P50 与 P95，
+并直接生成上面那张表格的 Markdown，可原样粘回本文档。
+
+换模型或换供应商后重跑一次，就能拿到可对比的数据——这也是写简历时那个数字的来源。
 
 ---
 
